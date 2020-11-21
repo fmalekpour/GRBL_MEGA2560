@@ -3,7 +3,6 @@
 
 #include "grbl.h"
 
-// Initialize sleep timer
 void fm_i2c_init();
 
 #endif

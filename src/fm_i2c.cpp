@@ -1,21 +1,28 @@
+
+#include <Wire.h>
+
 /*
 #include <Arduino.h>
-#include <Wire.h>
 
 char fm_i2c_buffer[1024];
 int fm_i2c_buffer_index;
 */
 void fm_i2c_init()
 {
-	/*
-	fm_i2c_buffer_index = 0;
+	
+	//fm_i2c_buffer_index = 0;
 	Wire.begin(4);
-	Wire.onReceive(fm_i2c_receiveEvent);
-	*/
+//	Wire.onReceive(fm_i2c_receiveEvent);
+	Wire.onRequest(fm_i2c_receiveEvent);
+	
 }
 
-void fm_i2c_receiveEvent(int howMany)
+void fm_i2c_receiveEvent()
 {
+	Wire.write("hello ");
+
+
+
 	/*
 	while(Wire.available()>0)
 	{
