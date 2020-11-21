@@ -7,6 +7,9 @@
 char fm_i2c_buffer[1024];
 int fm_i2c_buffer_index;
 */
+
+void fm_i2c_receiveEvent();
+
 void fm_i2c_init()
 {
 	
