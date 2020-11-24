@@ -379,9 +379,13 @@ void fm_i2c_updateLcd()
 	}
 	*/
 
-	fm_i2c_lcd_buffer[2] = 'A';
-	fm_i2c_lcd_buffer[3] = 'B';
-	fm_i2c_lcd_buffer[4] = 'C';
+
+	fm_i2c_lcd_buffer[0] = 'X';
+	fm_i2c_lcd_buffer[1] = ':';
+	fm_i2c_lcd_buffer[2] = ' ';
+
+	fm_i2c_printFloat(buf, fm_i2c_global_data.pos[0], 2);
+	memcpy(fm_i2c_lcd_buffer+3,buf, strlen(buf));
 
 
 
