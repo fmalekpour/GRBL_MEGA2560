@@ -62,6 +62,8 @@
 #include "stepper.h"
 #include "jog.h"
 #include "sleep.h"
+/** FM **/
+#include "fm_i2c.h"
 
 // ---------------------------------------------------------------------------------------
 // COMPILE-TIME ERROR CHECKING OF DEFINE VALUES:
