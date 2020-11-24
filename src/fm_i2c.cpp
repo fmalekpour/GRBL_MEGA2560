@@ -1,6 +1,6 @@
 
 #include "grbl.h"
-#include <Wire.h>
+//#include <Wire.h>
 
 
 /**
@@ -80,14 +80,24 @@ typedef struct
 void fm_i2c_receiveEvent();
 void fm_i2c_printFloat(char *out, float n, uint8_t decimal_places);
 void fm_i2c_updateLcd();
+FM_I2C_DATA fm_i2c_getSystemData();
 
 uint32_t fm_i2c_timer5_counter;
 bool fm_i2c_lcd_needs_clean;
+uint8_t fm_i2c_timer_stage;
+FM_I2C_DATA fm_i2c_global_data;
+
+const uint8_t fm_i2c_lcd_buffer_count = 80;
+uint8_t fm_i2c_lcd_buffer[80];
+uint8_t fm_i2c_lcd_buffer_index;
 
 void fm_i2c_init()
 {
-	Wire.begin(4);
-	Wire.onRequest(fm_i2c_receiveEvent);
+//	Wire.begin(4);
+//	Wire.onRequest(fm_i2c_receiveEvent);
+
+	memset(fm_i2c_lcd_buffer, 0, fm_i2c_lcd_buffer_count);
+	fm_i2c_lcd_buffer_index = 0;
 
 	// change port mode to OUTPUT
 	DDRG |= (1 << 0);
@@ -104,10 +114,11 @@ void fm_i2c_init()
 	fm_i2c_lcd_needs_clean = true;
 
 	Lcd8_Init();
-	Lcd8_Set_Cursor(0,5);
-    Lcd8_Write_String("Loading...");
+//	Lcd8_Set_Cursor(0,5);
+//    Lcd8_Write_String("Loading...");
 
 	fm_i2c_timer5_counter = 0;
+	fm_i2c_timer_stage = 0;
 
 	// Setup Timer5
 	cli();
@@ -123,27 +134,81 @@ void fm_i2c_init()
 	TIMSK5 |= (1 << OCIE1A);  // enable timer compare interrupt
 */
 	
-
+/*
 	TCCR5B |= (1 << WGM12); // Configure timer 1 for CTC mode
 	TIMSK5 |= (1 << OCIE1A); // Enable CTC interrupt
 	sei();
 	OCR5A   = 15624;
 	TCCR5B |= ((1 << CS10) | (1 << CS11)); // Start timer at Fcpu/64
+*/
 
 
+	// Runs every 0.3ms
+	TCCR5A = 0;
+	TCCR5B = 0;
+	TCNT5 = 0;
 
-//	sei();
+	// 3125 Hz (16000000/((4+1)*1024))
+	OCR5A = 4;
+	// CTC
+	TCCR5B |= (1 << WGM52);
+	// Prescaler 1024
+	TCCR5B |= (1 << CS52) | (1 << CS50);
+	// Output Compare Match A Interrupt Enable
+	TIMSK5 |= (1 << OCIE5A);
+  	sei();
 }
 
 ISR(TIMER5_COMPA_vect)          // timer compare interrupt service routine
 {
 	fm_i2c_timer5_counter++;
-	if(fm_i2c_timer5_counter>=10)
+	if(fm_i2c_timer5_counter>=1500) //~0.5s
 	{
-	//serial_write('.');
+//	serial_write('.');
 		fm_i2c_timer5_counter = 0;
+		fm_i2c_global_data = fm_i2c_getSystemData();
 		fm_i2c_updateLcd();
+		return;
 	}
+
+	switch (fm_i2c_timer_stage)
+	{
+		case 0:
+			pinChange(FM_LCD_RS, 0);				// => RS = 0
+			Lcd8_Port(0x80);						//Data transfer
+			pinChange(FM_LCD_EN, 1);				// => E = 1			
+			fm_i2c_timer_stage = 1;
+			break;
+		case 1:
+			pinChange(FM_LCD_EN, 0);
+			fm_i2c_timer_stage = 2;
+			break;
+		case 2:
+			pinChange(FM_LCD_RS, 1);             // => RS = 1
+			Lcd8_Port(fm_i2c_lcd_buffer[fm_i2c_lcd_buffer_index]);             			//Data transfer
+			pinChange(FM_LCD_EN, 1);             // => E = 1
+			fm_i2c_lcd_buffer_index++;
+			if(fm_i2c_lcd_buffer_index>=fm_i2c_lcd_buffer_count)
+			{
+				fm_i2c_lcd_buffer_index=0;
+				fm_i2c_timer_stage = 4;
+			}
+			else
+			{
+				fm_i2c_timer_stage = 3;
+			}
+			break;
+		case 3:
+			pinChange(FM_LCD_EN, 0);
+			fm_i2c_timer_stage = 2;
+			break;
+		case 4:
+			pinChange(FM_LCD_EN, 0);
+			fm_i2c_timer_stage = 0;
+			break;
+	}
+
+	//fm_i2c_timer_stage
 }
 
 FM_I2C_DATA fm_i2c_getSystemData()
@@ -250,9 +315,10 @@ FM_I2C_DATA fm_i2c_getSystemData()
 
 void fm_i2c_receiveEvent()
 {
+	/*
 	FM_I2C_DATA cdt = fm_i2c_getSystemData();
-
 	Wire.write((const uint8_t*)&cdt, cdt.structSize);
+	*/
 }
 
 
@@ -301,6 +367,8 @@ void fm_i2c_printFloat(char *out, float n, uint8_t decimal_places)
 
 void fm_i2c_updateLcd()
 {
+	char buf[20];
+	/*
 	FM_I2C_DATA cdt = fm_i2c_getSystemData();
 	char buf[32];
 
@@ -309,6 +377,13 @@ void fm_i2c_updateLcd()
 		fm_i2c_lcd_needs_clean = false;
 		Lcd8_Clear();
 	}
+	*/
+
+	fm_i2c_lcd_buffer[2] = 'A';
+	fm_i2c_lcd_buffer[3] = 'B';
+	fm_i2c_lcd_buffer[4] = 'C';
+
+
 
 /*
 	Lcd8_Set_Cursor(0,0);
