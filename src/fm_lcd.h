@@ -105,6 +105,31 @@
 #define FM_LCD_D3 eS_PORTA3
 #endif
 
+
+#define LCD_CLEARDISPLAY   0x01
+#define LCD_RETURNHOME     0x02
+#define LCD_ENTRYMODESET   0x04
+#define LCD_DISPLAYCONTROL 0x08
+#define LCD_CURSORSHIFT    0x10
+#define LCD_FUNCTIONSET    0x20
+#define LCD_SETCGRAMADDR   0x40
+#define LCD_SETDDRAMADDR   0x80
+
+#define LCD_DISPLAYON  0x04
+#define LCD_DISPLAYOFF 0x00
+#define LCD_CURSORON   0x02
+#define LCD_CURSOROFF  0x00
+#define LCD_BLINKON    0x01
+#define LCD_BLINKOFF   0x00
+
+
+#define LCD_8BITMODE 0x10
+#define LCD_4BITMODE 0x00
+#define LCD_2LINE    0x08
+#define LCD_1LINE    0x00
+#define LCD_5x10DOTS 0x04
+#define LCD_5x8DOTS  0x00
+
 #include<util/delay.h>
 
 void pinChange(int a, int b)
@@ -318,7 +343,7 @@ void pinChange(int a, int b)
 
 
 //LCD 8 Bit Interfacing Functions
-void Lcd8_Port(char a)
+void Lcd8_Port(uint8_t a)
 {
 	pinChange(FM_LCD_D0,(a & 1));
 	pinChange(FM_LCD_D1,(a & 2));
@@ -330,7 +355,7 @@ void Lcd8_Port(char a)
 	pinChange(FM_LCD_D7,(a & 128));
 }
 
-void Lcd8_Cmd(char a)
+void Lcd8_Cmd(uint8_t a)
 {
 	pinChange(FM_LCD_RS,0);             // => RS = 0
 	Lcd8_Port(a);             //Data transfer
@@ -409,32 +434,32 @@ void Lcd8_Shift_Left()
 
 //LCD 4 Bit Interfacing Functions
 
-void Lcd4_Port(char a)
+void Lcd4_Port(uint8_t a)
 {
-	if(a & 1)
-	pinChange(FM_LCD_D4,1);
-	else
-	pinChange(FM_LCD_D4,0);
-	
-	if(a & 2)
-	pinChange(FM_LCD_D5,1);
-	else
-	pinChange(FM_LCD_D5,0);
-	
-	if(a & 4)
-	pinChange(FM_LCD_D6,1);
-	else
-	pinChange(FM_LCD_D6,0);
-	
-	if(a & 8)
-	pinChange(FM_LCD_D7,1);
-	else
-	pinChange(FM_LCD_D7,0);
+	pinChange(FM_LCD_D4,(a & 1));
+	pinChange(FM_LCD_D5,(a & 2));
+	pinChange(FM_LCD_D6,(a & 4));
+	pinChange(FM_LCD_D7,(a & 8));
 }
-void Lcd4_Cmd(char a)
+void Lcd4_Cmd(uint8_t a)
 {
 	pinChange(FM_LCD_RS,0);             // => RS = 0
 	Lcd4_Port(a);
+	pinChange(FM_LCD_EN,1);            // => E = 1
+	_delay_ms(1);
+	pinChange(FM_LCD_EN,0);             // => E = 0
+	_delay_ms(1);
+}
+void Lcd4_Cmd_Full(uint8_t a)
+{
+	pinChange(FM_LCD_RS,0);             // => RS = 0
+	Lcd4_Port((a & 0xF0)>>4);
+	pinChange(FM_LCD_EN,1);            // => E = 1
+	_delay_ms(1);
+	pinChange(FM_LCD_EN,0);             // => E = 0
+	_delay_ms(1);
+
+	Lcd4_Port((a & 0x0F));
 	pinChange(FM_LCD_EN,1);            // => E = 1
 	_delay_ms(1);
 	pinChange(FM_LCD_EN,0);             // => E = 0
@@ -447,7 +472,7 @@ void Lcd4_Clear()
 	Lcd4_Cmd(1);
 }
 
-void Lcd4_Set_Cursor(char a, char b)
+void Lcd4_Set_Cursor(uint8_t a, uint8_t b)
 {
 	char temp,z,y;
 	if(a == 1)
@@ -470,25 +495,70 @@ void Lcd4_Set_Cursor(char a, char b)
 
 void Lcd4_Init()
 {
+	pinChange(FM_LCD_RS,0);
+	pinChange(FM_LCD_EN,0);
+/*	
+	_delay_ms(20);
+
+	
+	Lcd4_Port(0x00);
+	_delay_ms(20);
+	Lcd4_Cmd(0x03);
+	_delay_ms(5);
+	Lcd4_Cmd(0x03);
+	_delay_ms(11);
+	Lcd4_Cmd(0x03);
+*/
+
+//	pinChange(FM_LCD_D4,0);
+//	pinChange(FM_LCD_D5,(a & 2));
+//	pinChange(FM_LCD_D6,(a & 4));
+//	pinChange(FM_LCD_D7,(a & 8));
+
+
 	Lcd4_Port(0x00);
 	_delay_ms(20);
 	///////////// Reset process from datasheet /////////
+
 	Lcd4_Cmd(0x03);
 	_delay_ms(5);
 	Lcd4_Cmd(0x03);
 	_delay_ms(11);
 	Lcd4_Cmd(0x03);
 	/////////////////////////////////////////////////////
+	_delay_ms(1);
 	Lcd4_Cmd(0x02);
+
+	Lcd4_Cmd_Full(LCD_FUNCTIONSET | LCD_4BITMODE | LCD_2LINE | LCD_5x8DOTS);
+//	Lcd4_Cmd_Full(LCD_FUNCTIONSET | LCD_4BITMODE | LCD_1LINE | LCD_5x8DOTS);
+//	Lcd4_Cmd_Full(LCD_DISPLAYCONTROL | LCD_CURSOROFF | LCD_BLINKOFF);
+
+
+/*
+	Lcd4_Cmd(0x02);
+	Lcd4_Cmd(0x08);
+*/
+	Lcd4_Cmd(0x00);
+	Lcd4_Cmd(0x0C);
+	Lcd4_Cmd(0x00);
+	Lcd4_Cmd(0x06);
+
+/*
 	Lcd4_Cmd(0x02);
 	Lcd4_Cmd(0x08);
 	Lcd4_Cmd(0x00);
 	Lcd4_Cmd(0x0C);
 	Lcd4_Cmd(0x00);
 	Lcd4_Cmd(0x06);
+*/
+
+
+//	Lcd4_Cmd(0x01);
+//	_delay_ms(5);
+
 }
 
-void Lcd4_Write_Char(char a)
+void Lcd4_Write_Char(uint8_t a)
 {
 	char temp,y;
 	temp = a&0x0F;
@@ -506,7 +576,7 @@ void Lcd4_Write_Char(char a)
 	_delay_ms(1);
 }
 
-void Lcd4_Write_String(char *a)
+void Lcd4_Write_String(uint8_t *a)
 {
 	int i;
 	for(i=0;a[i]!='\0';i++)
