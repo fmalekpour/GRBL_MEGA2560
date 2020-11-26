@@ -1,5 +1,6 @@
 
 #include "grbl.h"
+#include "fm_twi.h"
 //#include <Wire.h>
 
 
@@ -107,10 +108,16 @@ void fm_i2c_printLong(char *out, long n, int outSize);
 void fm_i2c_updateLcd();
 void fm_i2c_updateSystemData();
 
+void I2C_received(uint8_t received_data);
+void I2C_requested();
+
 uint32_t fm_i2c_timer5_counter;
 bool fm_i2c_lcd_needs_clean;
 uint8_t fm_i2c_timer_stage;
 FM_I2C_DATA fm_i2c_global_data;
+
+char fm_i2c_update_lcd_buffer[26];
+char fm_i2c_print_funcs_buffer[16];
 
 const uint8_t fm_i2c_lcd_buffer_count = FM_LCD_WIDTH*FM_LCD_HEIGHT;
 char fm_i2c_lcd_buffer[FM_LCD_WIDTH*FM_LCD_HEIGHT];
@@ -120,6 +127,8 @@ void fm_i2c_init()
 {
 //	Wire.begin(4);
 //	Wire.onRequest(fm_i2c_receiveEvent);
+	I2C_setCallbacks(I2C_received, I2C_requested);
+	I2C_init(0x04);
 
 	for(uint8_t i=0;i<fm_i2c_lcd_buffer_count;i++)
 	{
@@ -194,6 +203,22 @@ void fm_i2c_init()
   	sei();
 }
 
+void I2C_received(uint8_t received_data)
+{
+}
+
+void I2C_requested()
+{
+	int s = sizeof(FM_I2C_DATA);
+	uint8_t buf[sizeof(FM_I2C_DATA)];
+	memcpy(buf, (uint8_t*)&fm_i2c_global_data, s);
+	for(int i=0;i<s;i++)
+	{
+	  	I2C_transmitByte(buf[i]);
+	}
+}
+
+
 ISR(TIMER5_COMPA_vect)          // timer compare interrupt service routine
 {
 	fm_i2c_timer5_counter++;
@@ -246,82 +271,6 @@ ISR(TIMER5_COMPA_vect)          // timer compare interrupt service routine
 	}
 #endif
 
-#ifdef FM_LCD_48
-
-	switch (fm_i2c_timer_stage)
-	{
-		case 0:
-			pinChange(FM_LCD_RS, 0);
-			Lcd4_Port((0x80) >> 4);
-			pinChange(FM_LCD_EN, 0);
-			fm_i2c_timer_stage = 1;
-			break;
-		case 1:
-			pinChange(FM_LCD_EN, 1);
-			fm_i2c_timer_stage = 2;
-			break;
-		case 2:
-			pinChange(FM_LCD_EN, 0);
-			fm_i2c_timer_stage = 3;
-			break;
-		case 3:
-			Lcd4_Port((0x80) & 0x0F);
-			pinChange(FM_LCD_EN, 0);
-			fm_i2c_timer_stage = 4;
-			break;
-		case 4:
-			pinChange(FM_LCD_EN, 1);
-			fm_i2c_timer_stage = 5;
-			break;
-		case 5:
-			pinChange(FM_LCD_EN, 0);
-			fm_i2c_timer_stage = 10;
-			break;
-
-		case 10:
-			pinChange(FM_LCD_RS, 1);
-			Lcd4_Port((fm_i2c_lcd_buffer[fm_i2c_lcd_buffer_index] & 0xF0) >> 4);
-			pinChange(FM_LCD_EN, 0);
-			fm_i2c_timer_stage = 11;
-			break;
-		case 11:
-			pinChange(FM_LCD_EN, 1);
-			fm_i2c_timer_stage = 12;
-			break;
-		case 12:
-			pinChange(FM_LCD_EN, 0);
-			fm_i2c_timer_stage = 13;
-			break;
-
-
-		case 13:
-			Lcd4_Port((fm_i2c_lcd_buffer[fm_i2c_lcd_buffer_index] & 0x0F));
-			pinChange(FM_LCD_EN, 0);
-			fm_i2c_timer_stage = 14;
-			break;
-		case 14:
-			pinChange(FM_LCD_EN, 1);
-			fm_i2c_timer_stage = 15;
-			break;
-		case 15:
-			pinChange(FM_LCD_EN, 0);
-			fm_i2c_timer_stage = 20;
-			break;
-
-		case 20:
-			fm_i2c_lcd_buffer_index++;
-			if(fm_i2c_lcd_buffer_index>=fm_i2c_lcd_buffer_count)
-			{
-				fm_i2c_lcd_buffer_index=0;
-				fm_i2c_timer_stage = 0;
-			}
-			else
-			{
-				fm_i2c_timer_stage = 10;
-			}
-			break;
-	}
-#endif
 
 #ifdef FM_LCD_4
 
@@ -555,7 +504,7 @@ void fm_i2c_printFloat(char *out, float n, uint8_t decimal_places, int outSize)
 	memset(out, ' ', outSize);
 
 	long n2 =  n*100;
-	char buf[13];
+	char *buf = fm_i2c_print_funcs_buffer;
 	ltoa(n2, buf, 10);
 	int s = strlen(buf);
 	if(s==2)
@@ -606,7 +555,7 @@ void fm_i2c_printLong(char *out, long n, int outSize)
 	}
 	memset(out, ' ', outSize);
 
-	char buf[13];
+	char *buf = fm_i2c_print_funcs_buffer;
 	ltoa(n, buf, 10);
 	int s = strlen(buf);
 	if(s>outSize-1)
@@ -628,12 +577,28 @@ void fm_i2c_printState(char *out, uint16_t state, int outSize)
 	const char *buf;
 	switch (state)
 	{
-		case 0:
-			break;
-		default:
-			buf = PSTR("UNKNOWN");
-			break;
+		case 1:		buf = PSTR("Idle");				break;
+		case 2:		buf = PSTR("Run");				break;
+		case 3:		buf = PSTR("Can Resume");		break;
+		case 4:		buf = PSTR("Hold");				break;
+		case 5:		buf = PSTR("Jog");				break;
+		case 6:		buf = PSTR("Home");				break;
+		case 7:		buf = PSTR("Alarm");			break;
+		case 8:		buf = PSTR("Check");			break;
+		case 9:		buf = PSTR("Door Closed");		break;
+		case 10:	buf = PSTR("Door Open");		break;
+		case 11:	buf = PSTR("Retracting");		break;
+		case 12:	buf = PSTR("Restoring");		break;
+		case 13:	buf = PSTR("Sleep");			break;
+		default:	buf = PSTR("UNKNOWN");			break;
 	}
+	memset(out, ' ', outSize);
+	int s = strlen_P(buf);
+	
+	int outx = outSize - s;
+	memcpy_P(out+outx, buf, s);
+	
+	out[outSize] = 0;
 }
 
 void fm_i2c_lcd_printLeft(const char *str, uint8_t col, uint8_t row)
@@ -649,14 +614,14 @@ void fm_i2c_lcd_printLeft(const char *str, uint8_t col, uint8_t row)
 		row = FM_LCD_HEIGHT-1;
 
 	uint16_t offset = (row*FM_LCD_WIDTH)+col;
-	memcpy(fm_i2c_lcd_buffer+offset, str, min(strlen(str), FM_LCD_WIDTH-col));
+	memcpy(fm_i2c_lcd_buffer+offset, str, min((uint16_t)strlen(str), (uint16_t)(FM_LCD_WIDTH-col)));
 
 }
 
 uint16_t fm_test_counter = 0;
 void fm_i2c_updateLcd()
 {
-	char buf[20];
+	char *buf = fm_i2c_update_lcd_buffer;
 	/*
 	FM_I2C_DATA cdt = fm_i2c_getSystemData();
 	char buf[32];
@@ -710,31 +675,12 @@ void fm_i2c_updateLcd()
 	fm_i2c_lcd_printLeft(buf,11,1);
 
 	buf[0] = 'S';
-	buf[1] = 'T';
-	buf[2] = ':';
-	fm_i2c_printState(buf+3, fm_i2c_global_data.state, 17);
-
-
-/*
-	Lcd8_Set_Cursor(0,0);
-    Lcd8_Write_String("X: ");
-	fm_i2c_printFloat(buf, cdt.pos[0], 2);
-	Lcd8_Set_Cursor(4,0);
-    Lcd8_Write_String(buf);
-
-	Lcd8_Set_Cursor(0,1);
-    Lcd8_Write_String("Y: ");
-	fm_i2c_printFloat(buf, cdt.pos[1], 2);
-	Lcd8_Set_Cursor(4,1);
-    Lcd8_Write_String(buf);
-*/
-	/*
-	fm_lcd.setCursor(0,0);
-	fm_lcd.print(F("X:"));
-	fm_lcd.setCursor(0,1);
-	fm_lcd.print(F("Y:"));
-	fm_lcd.setCursor(0,2);
-	fm_lcd.print(F("Z:"));
-*/
+	buf[1] = 't';
+	buf[2] = 'a';
+	buf[3] = 't';
+	buf[4] = 'e';
+	buf[5] = ':';
+	fm_i2c_printState(buf+6, fm_i2c_global_data.state, 14);
+	fm_i2c_lcd_printLeft(buf,0,2);
 
 }
