@@ -102,5 +102,6 @@ void FMSystemData::update()
 		}
 	}
 
-	cdt->feedSpeed = sys.spindle_speed;
+	cdt->feedSpeed = st_get_realtime_rate();
+	
 }

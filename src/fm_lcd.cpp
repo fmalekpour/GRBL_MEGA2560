@@ -42,9 +42,11 @@ FMLcd::FMLcd(uint8_t lcdWidth, uint8_t lcdHeight)
 
 
 
+	_delay_ms(50);
 	// change port mode to OUTPUT
 	this->changePortsToOutput();
 
+	_delay_ms(100);
 	this->initLcd();
 
 }
@@ -234,7 +236,8 @@ void FMLcd::updateLcd(FMSystemData *systemData)
 
 	buf[0] = 'F';
 	buf[1] = ':';
-	this->printLong(buf+2, systemData->mSystemData.feedSpeed, 7);
+	this->printFloat(buf+2, systemData->mSystemData.feedSpeed, 2, 7);
+//	this->printLong(buf+2, systemData->mSystemData.feedSpeed, 7);
 	this->printLeft(buf,11,1);
 
 	buf[0] = 'S';
