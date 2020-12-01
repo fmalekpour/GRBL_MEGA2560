@@ -403,10 +403,10 @@
   #define CONTROL_MASK      ((1<<CONTROL_RESET_BIT)|(1<<CONTROL_FEED_HOLD_BIT)|(1<<CONTROL_CYCLE_START_BIT)|(1<<CONTROL_SAFETY_DOOR_BIT))
 
   // Define probe switch input pin.
-  #define PROBE_DDR       DDRK
-  #define PROBE_PIN       PINK
-  #define PROBE_PORT      PORTK
-  #define PROBE_BIT       7  // MEGA2560 Analog Pin 15
+  #define PROBE_DDR       DDRC
+  #define PROBE_PIN       PINC
+  #define PROBE_PORT      PORTC
+  #define PROBE_BIT       2  // MEGA2560 D35
   #define PROBE_MASK      (1<<PROBE_BIT)
 /*
   // Advanced Configuration Below You should not need to touch these variables

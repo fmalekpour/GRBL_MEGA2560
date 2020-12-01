@@ -172,24 +172,28 @@ uint8_t FMLcd::runCycleFromStage()
 			return 10;
 
 		case 10:
-			this->pinChange(FM_LCD_PIN_RS, 1);
-			this->setValue((this->mBuffer[this->mBufferIndex] & 0xF0) >> 4);
-			this->pinChange(FM_LCD_PIN_EN, 1);
-			return 11;
-		case 11:
-			this->pinChange(FM_LCD_PIN_EN, 0);
-			return 12;
-
-
-		case 12:
-			this->setValue((this->mBuffer[this->mBufferIndex] & 0x0F));
-			this->pinChange(FM_LCD_PIN_EN, 1);
-			return 13;
-		case 13:
-			this->pinChange(FM_LCD_PIN_EN, 0);
+			this->mBufferIndex = 0;
 			return 20;
 
 		case 20:
+			this->pinChange(FM_LCD_PIN_RS, 1);
+			this->setValue((this->mBuffer[this->mBufferIndex] & 0xF0) >> 4);
+			this->pinChange(FM_LCD_PIN_EN, 1);
+			return 21;
+		case 21:
+			this->pinChange(FM_LCD_PIN_EN, 0);
+			return 30;
+
+
+		case 30:
+			this->setValue((this->mBuffer[this->mBufferIndex] & 0x0F));
+			this->pinChange(FM_LCD_PIN_EN, 1);
+			return 31;
+		case 31:
+			this->pinChange(FM_LCD_PIN_EN, 0);
+			return 40;
+
+		case 40:
 			this->mBufferIndex++;
 			if(this->mBufferIndex>=this->mBufferCount)
 			{
@@ -198,7 +202,7 @@ uint8_t FMLcd::runCycleFromStage()
 			}
 			else
 			{
-				return 10;
+				return 20;
 			}
 			break;
 	}
