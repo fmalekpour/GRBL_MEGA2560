@@ -436,7 +436,7 @@ int main(void)
     probe_init();
     sleep_init();
 	/** FM **/
-	fm_i2c_init();
+	fm_manager_init();
 	
     plan_reset(); // Clear block buffer and planner variables
     st_reset(); // Clear stepper subsystem variables.

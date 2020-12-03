@@ -163,6 +163,11 @@ void protocol_main_loop()
       // Check for sleep conditions and execute auto-park, if timeout duration elapses.
       sleep_check();
     #endif
+
+	  /** FM **/
+	  fm_manager_checkUpdate();
+
+
   }
 
   return; /* Never reached */
